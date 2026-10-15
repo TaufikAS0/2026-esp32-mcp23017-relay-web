@@ -1,0 +1,4 @@
+build/
+02_Firmware/relay_web/build_metadata.h
+__pycache__/
+.vscode/
