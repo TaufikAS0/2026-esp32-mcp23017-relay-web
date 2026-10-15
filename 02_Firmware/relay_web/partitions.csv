@@ -1,0 +1,11 @@
+# GroundChecker ESP32-S3 16MB layout. Keep original data/OTA slots intact.
+# Old NVS is reserved with custom subtype so Arduino cannot auto-format it.
+# Name, Type, SubType, Offset, Size, Flags
+legacy_nvs,data,0x40,0x9000,0x80000,
+otadata,data,ota,0x89000,0x2000,
+phy_init,data,phy,0x8B000,0x1000,
+factory,app,factory,0x90000,0x400000,
+ota_0,app,ota_0,0x490000,0x400000,
+ota_1,app,ota_1,0x890000,0x400000,
+storage,data,spiffs,0xC90000,0x2F7000,
+nvs,data,nvs,0xF90000,0x60000,
