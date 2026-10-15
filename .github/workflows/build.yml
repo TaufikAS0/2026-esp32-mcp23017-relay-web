@@ -20,5 +20,7 @@ jobs:
         with:
           name: relay-web-firmware
           path: |
-            build/*.bin
+            build/relay_web.ino.bin
+            build/relay_web.ino.bootloader.bin
+            build/relay_web.ino.partitions.bin
             build/manifest.json

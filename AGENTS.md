@@ -10,6 +10,10 @@ lab maintainers must resolve the vault before changing connectivity policy.
 
 - Work on feature/* from develop; reviewed PR to develop. Do not push directly to main or auto-merge.
 - Dedicated MCP23017 0x20 B0..B7 are relays; watchdog is ESP32 GPIO2, NEVER MCP B7.
+- Verified board is ESP32-S3 / 16MB flash / 8MB octal PSRAM; I2C SDA8/SCL9 from GroundChecker pinlist.
+- Preserve legacy NVS bytes at 0x9000..0x88fff. New app uses separate nvs at 0xf90000.
+- Use guarded scripts/upload.py. Generic Arduino upload writes boot_app0 at 0xe000 and can corrupt legacy data.
+- Keep full-device backups local under ignored build/. Never publish raw flash/NVS dumps.
 - The older Compact board has a different watchdog mapping. Do not copy its entire hardware profile.
 - Only the explicitly approved public lab Wi-Fi profile may be published. No private source dumps/secrets.
 - One version source: firmware_version.h. Build with scripts/build.py / Build-Firmware.ps1.

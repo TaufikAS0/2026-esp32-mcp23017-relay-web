@@ -1,14 +1,14 @@
 # JIN ESP32 MCP23017 Relay Web
 
 Simple open-source local web controller for eight ULN2803-driven relays.
-Initial firmware **v0.1.0**. Target: classic ESP32 Dev Module / Arduino-ESP32 **3.3.10**.
-The fitted module/flash size and wiring still require bench confirmation. This is not the Compact QC firmware.
+Firmware **v0.2.0**. Target: ESP32-S3, 16MB quad flash, 8MB octal PSRAM / Arduino-ESP32 **3.3.10**.
+Chip/flash were read from the attached GroundChecker board. This is not the Compact QC firmware.
 
 ## Wiring
 
 | Signal | Connection |
 |---|---|
-| I2C SDA / SCL | ESP32 GPIO21 / GPIO22 (Compact reference) |
+| I2C SDA / SCL | ESP32-S3 GPIO8 / GPIO9 (GroundChecker pinlist) |
 | MCP23017 address | `0x20`, BANK=0; dedicated port B |
 | Relay 1–8 | GPB0–GPB7 -> ULN2803 inputs 1B–8B |
 | ULN2803 COM / GND | +5V coil supply / common GND, per supplied mapping |
@@ -21,7 +21,7 @@ Software cannot guarantee OFF before initialization or after I2C/driver failure.
 
 **Do not flash this on an unchanged Compact board:** its source maps TPL DONE to MCP1B7,
 while this requested board maps B7 to relay 8 and DONE to GPIO2. Check wiring first.
-GPIO2 is a classic ESP32 boot strap; external circuitry must not prevent boot/download.
+ESP32-S3 has no GPIO22; do not use the earlier v0.1.0 classic-ESP32 binary on this board.
 
 ## Connect and control
 
@@ -41,7 +41,7 @@ so retries do not toggle unexpectedly. Status is MCP latch readback, not contact
 On I2C failure, OFF is attempted, status becomes UNKNOWN, and controls lock until repair/reboot.
 No automatic re-arm after a bus fault. Port A is untouched; dedicate this MCP port B to relays.
 
-Watchdog task starts before I2C/NVS/Wi-Fi: nominal HIGH 2ms, period 25ms at GPIO2,
+Watchdog task starts in setup before application I2C/NVS/Wi-Fi: nominal HIGH 2ms, period 25ms at GPIO2,
 adapted from Compact's 25ms / HIGH >=1ms timing. Task scheduling can add jitter.
 It continues during web requests, reconnects and MCP faults. This independent feed does not certify
 application health: a stuck web loop may coexist with a running watchdog task.
@@ -78,25 +78,38 @@ node tests/ui.cjs
 
 Windows: `./Build-Firmware.ps1` discovers the Arduino IDE CLI automatically.
 Build wrapper generates fresh UTC identity + nonce, performs a clean compile, verifies binary identity,
-and writes `build/manifest.json` with version, UTC, board/core and application SHA-256.
+and writes `build/manifest.json` with version, UTC, board/core and hashes/offsets of all upload images.
+The generated partition table is checked against the approved GroundChecker layout.
 Missing metadata fails compilation; stale/mismatched binary fails the gate. Use this wrapper for every build.
 Direct IDE compilation is not the verified build path. CI uploads binary + manifest artifacts.
 
-After checking actual board, flash size, GPIO2 and COM port, upload the generated build:
+After checking board/wiring, back up bootloader, original table/NVS and the entire factory slot locally,
+then use esptool v5 through the guarded uploader:
 
 ```sh
-arduino-cli upload --fqbn esp32:esp32:esp32 --port YOUR_PORT --input-dir build 02_Firmware/relay_web
+esptool --port YOUR_PORT --baud 460800 read-flash 0 0x490000 build/pre-relay-boot-nvs-factory.bin
+python scripts/upload.py --port YOUR_PORT --esptool esptool --backup build/pre-relay-boot-nvs-factory.bin
 ```
 
-Default ESP32 Dev Module flash/partition profile is used (4MB); do not assume Compact's 16MB layout.
-Uploading can replace another application/partition layout. No device upload has been performed for this project.
+The uploader verifies the target, manifest and bounded write ranges: bootloader at 0, partition table at 0x8000,
+factory application at 0x90000. It never writes Arduino boot_app0 at 0xe000, which overlaps this board's legacy NVS.
+Do not use a generic Arduino upload/merged binary/default partition layout on this device.
+CI publishes only the three verified separate images and manifest; do not use a tool-generated merged binary.
+The existing board must currently boot the factory slot; a different OTA selection requires a separate review.
+Existing OTA images and storage are preserved. The backup covers all overwritten original ranges; other slots are not rewritten.
+Flash/NVS backups contain private device data: keep them local and ignored.
+If the owner explicitly requests a full erase, run `esptool --chip esp32s3 --port YOUR_PORT erase-flash`
+before upload. That separate operation destroys all prior NVS, calibration, OTA images and storage;
+the reserved legacy_nvs region will then be empty. It is not part of the uploader's default behavior.
 
 ## NVS and architecture
 
-Only `relay-net` keys `ssid`, `password`, `ap_password` are migrated when their values differ.
-Compiled lab credentials override any old SDK STA profile on every boot using `WiFi.begin`.
-No NVS erase, calibration migration, or modification of other application namespaces.
-Old namespaces may remain on a reused device but are not consumed by this application.
+The old GroundChecker NVS remains byte-for-byte at 0x9000..0x88fff as reserved `legacy_nvs` (data subtype 0x40).
+A new NVS partition at 0xf90000..0xfeffff occupies previously unallocated flash. This prevents the newer Arduino
+core's automatic NVS recovery/format path from erasing the older firmware's configuration.
+No legacy configuration, calibration or secret is imported. Restoring the old firmware also requires its original partition table.
+In the new NVS, only `relay-net` keys `ssid`, `password`, `ap_password` are selectively migrated when they differ.
+Compiled lab credentials override the active SDK STA profile on every boot using `WiFi.begin`.
 Relay state is deliberately not persisted. Files separate config, MCP driver, network, watchdog, web UI and App.
 
 See [validation and rules](04_Dokumen/VALIDATION.md) and [changelog](CHANGELOG.md).

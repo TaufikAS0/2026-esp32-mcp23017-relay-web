@@ -1,5 +1,8 @@
 # Implementation and handoff — 2026-10-15
 
+Current installed firmware is v0.2.0 on ESP32-S3; see the final section below.
+The initial v0.1.0 sections are retained as historical evidence and do not describe the current target.
+
 ## Facts and decisions
 
 - New repository, initial v0.1.0; no previous version or installed-device baseline known.
@@ -80,3 +83,49 @@ Confirm live /api/status version/build UTC agrees with serial and UI after a sep
 - Git flow: bootstrap develop, implementation feature/relay-web-control, open PR to develop; no merge/main release.
 - Public preview default is feature/relay-web-control until the integration PR is reviewed/merged.
 - No firmware uploaded. No measured watchdog waveform/reset, real Wi-Fi/NVS or physical relay-load acceptance.
+
+## v0.2.0 — COM10 identification, full erase and live verification
+
+### Confirmed target and changes
+
+- User requested USB upload and web verification, then explicitly requested a full erase.
+- esptool identified ESP32-S3 revision 0.2, 16MB quad flash and 8MB octal PSRAM.
+- The old application was an ESP-IDF GroundChecker image booting factory at 0x90000.
+- The supplied Google Sheets GroundChecker pinlist confirms SDA GPIO8, SCL GPIO9, DONE WT GPIO2,
+  MCP 0x20, and ULN2803 relay channels on B0..B7. No unrelated sheet contents were published.
+- Repository firmware version 0.1.0 -> 0.2.0 (minor: corrected target/hardware support).
+- FQBN: esp32:esp32:esp32s3:FlashSize=16M,FlashMode=dio,PSRAM=opi,PartitionScheme=custom.
+- Added exact partition-table/bundle gates and guarded upload. Seven Python tests and Node UI simulation PASS.
+
+### Flash procedure / data handling
+
+- Local backup of 0x000000..0x48ffff completed before erase: bootloader, original partition table, NVS,
+  otadata/phy and full old factory slot. It is not a full 16MB device backup.
+- Raw backups/logs are ignored under build/ and must not be published.
+- User-authorized full-chip erase PASS (38.7 seconds). All old NVS, calibration, OTA images and storage were erased.
+  Earlier preservation planning no longer describes this actual deployment.
+- The custom map retains the original region boundaries, reserves legacy_nvs, and uses new nvs at 0xf90000.
+  On this fully erased device the reserved legacy_nvs region is empty; no old data was migrated.
+- Uploaded bootloader at 0, table at 0x8000 and factory application at 0x90000; all three write hashes verified.
+- No direct Arduino boot_app0/merged upload was used. Subsequent uploads use scripts/upload.py.
+- Live profile: STA HuaweiJIN; recovery AP password 12345678. Application relay-net Wi-Fi keys are initialized
+  in the new NVS and updated only when changed. Separate AP client authentication was not bench-tested.
+
+### Installed build / runtime checks
+
+- Clean Arduino-ESP32 3.3.10 build PASS; installed v0.2.0 build UTC 2026-10-15T04:18:27Z
+  (11:18:27 UTC+07:00), not the device's current clock.
+- Application binary 964560 bytes, SHA-256 6f1af7ce6ac76d4b804395ac8a1486a492ce770dddb5ee009856e1a8834070d3.
+- Compiler application payload 964407 bytes, globals 47688 bytes. The compiler reports the whole 16MB flash
+  as its custom-profile maximum; the independent artifact gate enforces the actual 4MB factory slot.
+- Serial boot, live /api/status and rendered dashboard show the same version and build UTC.
+- STA connection PASS; root HTML HTTP 200; /api/status ready=true, mask=0, no MCP fault.
+- Browser relay 1 ON then OFF PASS in the UI/register state. All eight channel OFF commands and all-OFF API PASS.
+- Seven malformed POST cases return 400; two invalid GET routes return 404; no output change.
+- Twenty status samples showed no fault/reset. Normal reboot then reconnect PASS; final dashboard shows all OFF.
+- Watchdog task startup confirmed in serial: GPIO2, nominal HIGH 2ms / 25ms period. This is software evidence,
+  not a measured waveform, timeout/reset proof, or endurance acceptance.
+- Boot prints "No core dump partition found" because this minimal map has no crash-dump partition;
+  the application continues normally. No runtime crash was observed in these checks.
+- Physical relay contacts/load behavior, watchdog waveform and forced-failure reset remain unmeasured.
+- COM port/network identifiers, raw serial logs, screenshots and device backups remain local in ignored build/.

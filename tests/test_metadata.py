@@ -51,5 +51,17 @@ class MetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Version changed'):
             build.verify(identity, build.OUT / 'app.bin')
 
+    def test_legacy_partition_map(self):
+        import struct
+        data = b''.join(struct.pack('<HBBII16sI', 0x50aa, k, s, a, n, label.encode(), 0)
+                        for k, s, a, n, label in build.EXPECTED_PARTITIONS)
+        self.assertEqual(build.verify_partitions(data), build.EXPECTED_PARTITIONS)
+
+    def test_standard_arduino_partition_map_rejected(self):
+        import struct
+        data = struct.pack('<HBBII16sI', 0x50aa, 1, 2, 0x9000, 0x5000, b'nvs', 0)
+        with self.assertRaisesRegex(ValueError, 'Partition map mismatch'):
+            build.verify_partitions(data)
+
 if __name__ == '__main__':
     unittest.main()

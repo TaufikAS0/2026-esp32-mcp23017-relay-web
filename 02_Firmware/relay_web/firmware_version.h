@@ -1,5 +1,5 @@
 #pragma once
-#define FW_VERSION "0.1.0"
+#define FW_VERSION "0.2.0"
 #include "build_metadata.h"
 #include <string_view>
 static_assert(std::string_view(FW_VERSION) == FW_BUILD_VERSION,
