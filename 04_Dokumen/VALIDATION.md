@@ -129,3 +129,22 @@ Confirm live /api/status version/build UTC agrees with serial and UI after a sep
   the application continues normally. No runtime crash was observed in these checks.
 - Physical relay contacts/load behavior, watchdog waveform and forced-failure reset remain unmeasured.
 - COM port/network identifiers, raw serial logs, screenshots and device backups remain local in ignored build/.
+
+## Second device deployment — 2026-10-15
+
+- User requested another upload to a newly attached COM10 device. Fresh probe confirmed a different physical unit,
+  also ESP32-S3 revision 0.2, 16MB quad flash and 8MB octal PSRAM.
+- Re-read all eight mandatory vault entry/rule/profile files listed above and repository AGENTS before upload.
+- Same pinned v0.2.0 binary/bundle revalidated by hashes and partition gates; no new build or firmware change.
+  Build UTC remains 2026-10-15T04:18:27Z. Prior firmware version on this new unit was not identified.
+- Applied the user's existing lab full-erase authorization. Uploader --erase-all now explicitly selects this mode,
+  checks board/image identity before erase, then writes the three bounded images. No old-device backup was reused.
+- Full erase and all three flash write hash checks PASS. Serial boot identity matches the installed artifact.
+- STA HuaweiJIN connected; AP recovery password remains 12345678. Full erase initializes new NVS; the application
+  writes only its Wi-Fi profile keys when changed. Private configuration on the new unit was erased as authorized.
+- Live HTTP root/API/dashboard PASS; MCP ready=true. Eight channel OFF commands, all-OFF command,
+  seven malformed POSTs, two invalid GETs and twenty status samples PASS. Final mask=0.
+- Rendered browser dashboard shows v0.2.0/build UTC, connected and all eight channels OFF on this new unit.
+- This deployment did not energize any relay channel. Physical contacts and GPIO2 watchdog waveform remain unmeasured.
+- Four added mocked uploader safety tests PASS; total Python suite 11 PASS.
+- Device identifiers, IP and raw logs remain local under ignored build/.

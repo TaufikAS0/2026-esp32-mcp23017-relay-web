@@ -10,9 +10,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', required=True)
     parser.add_argument('--esptool', required=True, help='Path to esptool v5 executable')
-    parser.add_argument('--backup', required=True, help='Local backup of 0..0x48ffff: boot, NVS and full factory slot')
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--backup', help='Local backup of 0..0x48ffff: boot, NVS and full factory slot')
+    mode.add_argument('--erase-all', action='store_true', help='Explicitly erase all device data before upload; no backup required')
     args = parser.parse_args()
-    if Path(args.backup).stat().st_size != 0x490000:
+    if args.backup and Path(args.backup).stat().st_size != 0x490000:
         raise SystemExit('A complete 0x490000-byte boot/NVS/factory backup is required')
     manifest = json.loads((build.OUT / 'manifest.json').read_text())
     if manifest['fqbn'] != build.FQBN or manifest['version'] != build.version():
@@ -27,6 +29,9 @@ def main():
     print(probe)
     if 'ESP32-S3' not in probe or 'Detected flash size: 16MB' not in probe:
         raise SystemExit('Expected ESP32-S3 with 16MB flash')
+    if args.erase_all:
+        subprocess.run([args.esptool, '--chip', 'esp32s3', '--port', args.port,
+                        '--baud', '460800', 'erase-flash'], check=True)
     command = [args.esptool, '--chip', 'esp32s3', '--port', args.port, '--baud', '460800', 'write-flash']
     for image in images.values():
         command += [hex(image['offset']), str(build.OUT / image['file'])]

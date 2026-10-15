@@ -1,5 +1,13 @@
 # Changelog
 
+## Deployment tooling — 2026-10-15
+
+- Added explicit mutually exclusive uploader modes: --backup FILE or --erase-all.
+- Full erase mode runs target/image guards first, then erases and writes; no backup required when data loss is authorized.
+- Four mocked upload tests verify erase/write order, wrong-chip and bad-hash rejection, and required mode selection.
+- A second verified ESP32-S3 unit was flashed with the same v0.2.0 artifact and passed live web/API checks.
+- No firmware code, version, build identity or pin/network behavior changed in this tooling update.
+
 ## v0.2.0 — 2026-10-15
 
 - COM10 probe found ESP32-S3 / 16MB flash / 8MB octal PSRAM, rather than the provisional classic ESP32 target.

@@ -101,6 +101,9 @@ Flash/NVS backups contain private device data: keep them local and ignored.
 If the owner explicitly requests a full erase, run `esptool --chip esp32s3 --port YOUR_PORT erase-flash`
 before upload. That separate operation destroys all prior NVS, calibration, OTA images and storage;
 the reserved legacy_nvs region will then be empty. It is not part of the uploader's default behavior.
+Alternatively, `python scripts/upload.py --port YOUR_PORT --esptool esptool --erase-all` performs the
+explicitly authorized erase and upload without requiring a backup. Target and image guards run before erase.
+Choose exactly one mode: `--backup FILE` to preserve existing data ranges, or `--erase-all` to discard all data.
 
 ## NVS and architecture
 
